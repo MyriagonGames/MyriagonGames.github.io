@@ -16,6 +16,19 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/5.0.0-alpha1/js/bootstrap.min.js" integrity="sha384-oesi62hOLfzrys4LxRF63OJCXdXDipiYWBnvTl9Y9/TRlw5xlKIEHpNyvvDShgf/" crossorigin="anonymous"></script>
 
     <title>Myriagon Games</title>
+
+    <style>
+			body {
+				background: black;
+			}
+			canvas {
+				background: white;
+				width: 100%;
+				max-width: 256px;
+				margin: auto;
+				display: block;
+			}
+	</style>
 </head>
 
 <body>
@@ -36,7 +49,11 @@
         </div>
     </nav>
     <div class="container">
-        <h1 style="text-align: center;">404 Games Not Found</h1>
+        <h1 style="text-align: center; color: white">404 Games Not Found</h1>
+        
+        <canvas id="game" width="256" height="256"></canvas>
+		<script src="lib/kontra.min.js"></script>
+		<script src="src/game.js"></script>
     </div>
 </body>
 
