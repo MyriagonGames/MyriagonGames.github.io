@@ -29,11 +29,11 @@ load(
 				loop: false
 			},
 			walk_right_up: {
-				frames: '1..6',
+				frames: '1..7',
 				frameRate: 30
 			},
 			walk_left_down: {
-				frames: '6..1',
+				frames: '7..1',
 				frameRate: 30
 			}
 		}
