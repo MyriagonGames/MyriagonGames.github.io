@@ -1,8 +1,8 @@
 let { init, on, load, imageAssets, Sprite, SpriteSheet, GameLoop, initKeys, keyPressed, collides } = kontra //initiate kontra library (micro game engine) object with desired functions
 let { canvas } = init();
+let sprites = [];
 
-// this function must be called first before keyboard
-// functions will work
+// this function must be called first before keyboard functions will work
 initKeys();
 
 let numAssets = 4;
@@ -42,6 +42,9 @@ load(
 	let player = Sprite({
 		x: 50,
 		y: 50,
+		dt: 0, //track time that has passed
+		x_dir: 1, //for determining last faced direction
+		y_dir: 0,
 		anchor: {x: 0.5, y: 0.5},
 		animations: player_walk.animations
 	}); //sprites are the shapes we will use in our game
@@ -52,7 +55,7 @@ load(
 			x: 100,
 			y: 220,
 			anchor: {x: 0.5, y: 0.5},
-			dx: 1,
+			dx: 1.5,
 			dy: 0,
 			image: imageAssets['assets/imgs/enemy']
 		}),
@@ -60,7 +63,7 @@ load(
 			x: 100,
 			y: 165,
 			anchor: {x: 0.5, y: 0.5},
-			dx: 0.8,
+			dx: 1.6,
 			dy: 0,
 			image: imageAssets['assets/imgs/enemy']
 		})
@@ -79,15 +82,23 @@ load(
 			//user controls
 			if (keyPressed('up')){
 				player.y = player.y - 1;
+				player.y_dir = -1;
+				player.x_dir = 0;
 			}
 			if (keyPressed('down')){
 				player.y = player.y + 1;
+				player.y_dir = 1;
+				player.x_dir = 0;
 			}
 			if (keyPressed('left')){
 				player.x = player.x - 1;
+				player.x_dir = -1;
+				player.y_dir = 0;
 			}
 			if (keyPressed('right')){
 				player.x = player.x + 1;
+				player.x_dir = 1;
+				player.y_dir = 0;
 			}
 
 			//player animations
@@ -98,17 +109,33 @@ load(
 			} else {
 				player.playAnimation('idle');
 			}
+
+			//bullet firing from player, no more than once per 1/4 second
+			player.dt += 1/60;
+			if (keyPressed('space') && player.dt > 0.25) {
+				player.dt = 0;
+				let bullet = Sprite({
+					color: 'white',
+					x: player.x, // start the bullet on the player
+					y: player.y,
+					dx: 5 * player.x_dir,
+					dy: 5 * player.y_dir, 
+					ttl: 30, // live only 30 frames (i.e. 1 second at 30fps)
+					radius: 2, // bullets are small
+					width: 2,
+					height: 2
+				});
+				sprites.push(bullet);
+			}
 			
 			//map limits
 			if (player.x >= canvas.width-player.width/2){
-				//player.dx = player.dx * -1;
 				player.x = canvas.width-player.width/2;
 			} else if (player.x <= player.width/2){
 				player.x = player.width/2;
 			}			
 			
 			if (player.y >= canvas.height-player.height/2){
-				//player.dy = player.dy * -1;
 				player.y = canvas.width-player.height/2;
 			} else if (player.y <= player.height/2){
 				player.y = player.height/2;
@@ -133,7 +160,7 @@ load(
 				}
 				enemy.update();
 				
-				//check for collisions
+				//check for enemy player collision
 				if(collides(enemy,player)){
 					loop.stop();
 					alert('GAME OVER!');
@@ -141,7 +168,40 @@ load(
 				}
 			});
 			
+			//bullet update and wrap around map
+			sprites.map(sprite => {
+				sprite.update();
+				if (sprite.x < -sprite.radius) {
+					sprite.x = canvas.width + sprite.radius; // sprite is beyond the left edge
+				}
+				else if (sprite.x > canvas.width + sprite.radius) {
+					sprite.x = 0 - sprite.radius; // sprite is beyond the right edge
+				}
+				if (sprite.y < -sprite.radius) {
+					sprite.y = canvas.height + sprite.radius; // sprite is beyond the top edge
+				}
+				else if (sprite.y > canvas.height + sprite.radius) {
+					sprite.y = -sprite.radius; // sprite is beyond the bottom edge
+				}
+			});
+
 			map.update();
+
+			//collision detection bullet and enemy
+			for (let i = 0; i < enemies.length; i++) {
+				for (let j = 0; j < sprites.length; j++) {
+					let enemy = enemies[i];
+					let sprite = sprites[j];
+					if (collides(enemy,sprite)) {
+						enemy.ttl = 0;
+						sprite.ttl = 0;
+						break;
+					}
+				}
+			};
+			
+			enemies = enemies.filter(enemy => enemy.isAlive());	// filter out (remove) enemies
+			sprites = sprites.filter(sprite => sprite.isAlive());	// filter out (remove) bullets
 
 		}, //this update fn gets called multiple times per second
 		
@@ -151,6 +211,8 @@ load(
 			enemies.forEach(function(enemy){
 				enemy.render();
 			});
+
+			sprites.map(sprite => sprite.render()); //bullets etc.
 
 		} //this render fn takes care of displaying things on the canvas
 		
