@@ -1,11 +1,11 @@
-let { init, on, load, imageAssets, Sprite, GameLoop, initKeys, keyPressed, collides } = kontra //initiate kontra library (micro game engine) object with desired functions
+let { init, on, load, imageAssets, Sprite, SpriteSheet, GameLoop, initKeys, keyPressed, collides } = kontra //initiate kontra library (micro game engine) object with desired functions
 let { canvas } = init();
 
 // this function must be called first before keyboard
 // functions will work
 initKeys();
 
-let numAssets = 2;
+let numAssets = 4;
 let assetsLoaded = 0;
 on('assetLoaded', (asset, url) => {
   assetsLoaded++;
@@ -13,21 +13,39 @@ on('assetLoaded', (asset, url) => {
 });
 
 load(
-  'assets/imgs/player.png',
   'assets/imgs/enemy.png',
-  'assets/imgs/map1.png'
+  'assets/imgs/map1.png',
+  'assets/imgs/player_walk.png'
 ).then(function(assets) {
   // all assets have loaded
+	
+	let player_walk = SpriteSheet({
+		image: imageAssets['assets/imgs/player_walk'],
+		frameWidth: 16,
+		frameHeight: 16,
+		animations: {
+			idle: {
+				frames: 0,
+				loop: false
+			},
+			walk_right_up: {
+				frames: '1..6',
+				frameRate: 30
+			},
+			walk_left_down: {
+				frames: '6..1',
+				frameRate: 30
+			}
+		}
+	}); //player walk animation
 
 	let player = Sprite({
 		x: 50,
 		y: 50,
 		anchor: {x: 0.5, y: 0.5},
-		image: imageAssets['assets/imgs/player'],
-		//width: 16,
-		//height: 16,
-		//color: 'blue'
+		animations: player_walk.animations
 	}); //sprites are the shapes we will use in our game
+
 
 	let enemies = [
 		Sprite({
@@ -70,6 +88,15 @@ load(
 			}
 			if (keyPressed('right')){
 				player.x = player.x + 1;
+			}
+
+			//player animations
+			if (keyPressed('right') || keyPressed('up')){
+				player.playAnimation('walk_right_up');
+			} else if (keyPressed('down') || keyPressed('left')) {
+				player.playAnimation('walk_left_down');
+			} else {
+				player.playAnimation('idle');
 			}
 			
 			//map limits
