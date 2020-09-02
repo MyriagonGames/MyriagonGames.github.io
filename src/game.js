@@ -1,11 +1,11 @@
+//canvas variables
 let { init, on, load, imageAssets, Sprite, SpriteSheet, GameLoop, initKeys, keyPressed, collides } = kontra //initiate kontra library (micro game engine) object with desired functions
 let { canvas } = init();
-let sprites = [];
 
 // this function must be called first before keyboard functions will work
 initKeys();
 
-let numAssets = 4;
+let numAssets = 3;
 let assetsLoaded = 0;
 on('assetLoaded', (asset, url) => {
   assetsLoaded++;
@@ -19,7 +19,14 @@ load(
 ).then(function(assets) {
   // all assets have loaded
 	
-	let player_walk = SpriteSheet({
+	let map = Sprite({
+		x: 0,
+		y: 0,
+		image: imageAssets['assets/imgs/map1']
+	});
+
+	//player animations
+	let player_animation = SpriteSheet({
 		image: imageAssets['assets/imgs/player_walk'],
 		frameWidth: 16,
 		frameHeight: 16,
@@ -37,19 +44,23 @@ load(
 				frameRate: 30
 			}
 		}
-	}); //player walk animation
+	}); 
 
+	//player sprite
 	let player = Sprite({
 		x: 50,
 		y: 50,
 		dt: 0, //track time that has passed
-		x_dir: 1, //for determining last faced direction
+		x_dir: 1, //for determining last faced direction, for bullet direction
 		y_dir: 0,
 		anchor: {x: 0.5, y: 0.5},
-		animations: player_walk.animations
-	}); //sprites are the shapes we will use in our game
+		animations: player_animation.animations
+	});
 
+	//empty bullets array (array is populated on key press)
+	let bullets = [];
 
+	//enemy array
 	let enemies = [
 		Sprite({
 			x: 100,
@@ -68,12 +79,7 @@ load(
 			image: imageAssets['assets/imgs/enemy']
 		})
 	];
-
-	let map = Sprite({
-		x: 0,
-		y: 0,
-		image: imageAssets['assets/imgs/map1']
-	});
+	
 
 	let loop = GameLoop({
 		
@@ -125,10 +131,10 @@ load(
 					width: 2,
 					height: 2
 				});
-				sprites.push(bullet);
+				bullets.push(bullet);
 			}
 			
-			//map limits
+			//player map limits
 			if (player.x >= canvas.width-player.width/2){
 				player.x = canvas.width-player.width/2;
 			} else if (player.x <= player.width/2){
@@ -150,7 +156,9 @@ load(
 			
 			player.update();
 			
+			
 			enemies.forEach(function(enemy){
+				//enemy movement
 				if (enemy.x >= canvas.width-enemy.height/2){
 					enemy.x = canvas.width-enemy.height/2;
 					enemy.dx = -enemy.dx;
@@ -169,7 +177,7 @@ load(
 			});
 			
 			//bullet update and wrap around map
-			sprites.map(sprite => {
+			bullets.map(sprite => {
 				sprite.update();
 				if (sprite.x < -sprite.radius) {
 					sprite.x = canvas.width + sprite.radius; // sprite is beyond the left edge
@@ -189,9 +197,9 @@ load(
 
 			//collision detection bullet and enemy
 			for (let i = 0; i < enemies.length; i++) {
-				for (let j = 0; j < sprites.length; j++) {
+				for (let j = 0; j < bullets.length; j++) {
 					let enemy = enemies[i];
-					let sprite = sprites[j];
+					let sprite = bullets[j];
 					if (collides(enemy,sprite)) {
 						enemy.ttl = 0;
 						sprite.ttl = 0;
@@ -201,7 +209,7 @@ load(
 			};
 			
 			enemies = enemies.filter(enemy => enemy.isAlive());	// filter out (remove) enemies
-			sprites = sprites.filter(sprite => sprite.isAlive());	// filter out (remove) bullets
+			bullets = bullets.filter(sprite => sprite.isAlive());	// filter out (remove) bullets
 
 		}, //this update fn gets called multiple times per second
 		
@@ -212,7 +220,7 @@ load(
 				enemy.render();
 			});
 
-			sprites.map(sprite => sprite.render()); //bullets etc.
+			bullets.map(sprite => sprite.render()); //bullets etc.
 
 		} //this render fn takes care of displaying things on the canvas
 		
