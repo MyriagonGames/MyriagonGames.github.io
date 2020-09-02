@@ -14,17 +14,59 @@ on('assetLoaded', (asset, url) => {
 
 load(
   'assets/imgs/enemy.png',
+  'assets/imgs/map1.png',
   'assets/imgs/map2.png',
   'assets/imgs/map3.png',
   'assets/imgs/player_walk.png'
 ).then(function(assets) {
   // all assets have loaded
 	
+	let map_layout = [
+		[3,0,1],
+		[1,2,3],
+		[0,0,3]
+	]; //map layout must be a square array at the moment
+
+	function getMapImageNum(i,j) {
+		//TODO check map asset exists
+		return map_layout[i][j].toString();
+	};
+
+	function getMapIndex(i,j) {
+		//check there is a map tile in the indexed location
+		var eoMap = false;
+		if (i < 0) {
+			i = 0;
+			eoMap = true;
+		} else if (i >= map_layout.length){
+			i = map_layout.length-1;
+			eoMap = true;
+		};
+		if (j < 0) {
+			j = 0;
+			eoMap = true;
+		} else if (j >= map_layout[i].length){
+			j = map_layout[i].length-1;
+			eoMap = true;
+		};
+
+		// if tile is empty (no image, 0)
+		if (getMapImageNum(i,j) == 0) {
+			eoMap = true;
+		};
+
+		return [i,j,eoMap];
+	};
+
+	var map_start = getMapIndex(1,1); //starting map tile index
+
 	let map = Sprite({
 		x: 0,
 		y: 0,
-		map: 2,
-		image: imageAssets['assets/imgs/map2']
+		map_i: map_start[0],
+		map_j: map_start[1],
+		map_num: getMapImageNum(map_start[0],map_start[1]),
+		image: imageAssets[('assets/imgs/map' + getMapImageNum(map_start[0],map_start[1]))]
 	});
 
 	//player animations
@@ -141,53 +183,65 @@ load(
 				player.x = canvas.width-player.width/2;
 			} else if (player.x <= player.width/2){
 				player.x = player.width/2;
-			}			
+			};			
 			
 			if (player.y >= canvas.height-player.height/2){
 				player.y = canvas.width-player.height/2;
 			} else if (player.y <= player.height/2){
 				player.y = player.height/2;
-			}
+			};
 			
-			//plauer map traversing, via exits/entrances
+			//player map traversing, via exits/entrances
 			door_x_s = canvas.width/2-16;
 			door_x_e = canvas.width/2+16;
 			door_y_s = canvas.height/2-16;
 			door_y_e = canvas.height/2+16;
-
-			if ((player.y >= canvas.height-player.height/2 && player.x > door_x_s && player.x < door_x_e)
-					|| (player.y <= player.height/2 && player.x > door_x_s && player.x < door_x_e)
-					|| (player.x >= canvas.width-player.width/2 && player.y > door_y_s && player.y < door_y_e)
-					|| (player.x <= player.width/2 && player.y > door_y_s && player.y < door_y_e)) {
-				if( map.map == 2 ){
-					map.image = imageAssets['assets/imgs/map3'];
-					map.map = 3;
-				} else {
-					map.image = imageAssets['assets/imgs/map2'];
-					map.map = 2;
-				}
-				
-				if (player.x >= canvas.width-player.width/2){
-					player.x = player.width/2;
-				} else if (player.x <= player.width/2){
-					player.x = canvas.width-player.width/2;
-				}
-
-				if (player.y >= canvas.height-player.height/2){
-					player.y = player.height/2;
-				} else if (player.y <= player.height/2){
-					player.y = canvas.height-player.height/2;
-				}
-				
-				//loop.stop();
-				//alert('You Won!');
-				//window.location = '';
-			}
 			
+			if (player.y >= canvas.height-player.height/2 && player.x > door_x_s && player.x < door_x_e) { 
+				[map_i,map_j,eoMap] = getMapIndex(map.map_i+1,map.map_j); //go down a map
+				if (eoMap == false) {
+					map.map_i = map_i;
+					map.map_j = map_j;
+					map.map_num = getMapImageNum(map.map_i,map.map_j);
+					map.image = imageAssets[('assets/imgs/map' + map.map_num)]; //load relevant map tile
+					player.y = player.height/2; //place player in correct space
+				};
 
+			} else if (player.y <= player.height/2 && player.x > door_x_s && player.x < door_x_e) { 
+				[map_i,map_j,eoMap] = getMapIndex(map.map_i-1,map.map_j); //go up a map
+				if (eoMap == false) {
+					map.map_i = map_i;
+					map.map_j = map_j;
+					map.map_num = getMapImageNum(map.map_i,map.map_j);
+					map.image = imageAssets[('assets/imgs/map' + map.map_num)]; //load relevant map tile
+					player.y = canvas.height-player.height/2; //place player in correct space
+				};
+
+			} else if (player.x >= canvas.width-player.width/2 && player.y > door_y_s && player.y < door_y_e) { 
+				[map_i,map_j,eoMap] = getMapIndex(map.map_i,map.map_j+1); //go right a map
+				if (eoMap == false) {
+					map.map_i = map_i;
+					map.map_j = map_j;
+					map.map_num = getMapImageNum(map.map_i,map.map_j);
+					map.image = imageAssets[('assets/imgs/map' + map.map_num)]; //load relevant map tile
+					player.x = player.width/2; //place player in correct space
+				};
+
+			} else if (player.x <= player.width/2 && player.y > door_y_s && player.y < door_y_e) { 
+				[map_i,map_j,eoMap] = getMapIndex(map.map_i,map.map_j-1); //go left a map
+				if (eoMap == false) {
+					map.map_i = map_i;
+					map.map_j = map_j;
+					map.map_num = getMapImageNum(map.map_i,map.map_j);
+					map.image = imageAssets[('assets/imgs/map' + map.map_num)]; //load relevant map tile
+					player.x = player.x = canvas.width-player.width/2; //place player in correct space
+				};
+			};
+
+			//update player sprite
 			player.update();
 			
-			
+			//update enemy sprites
 			enemies.forEach(function(enemy){
 				//enemy movement
 				if (enemy.x >= canvas.width-enemy.width/2){
@@ -213,10 +267,11 @@ load(
 					window.location = '';
 				}
 			});
-			
-			//bullet update
+
+			//update bullet sprites
 			bullets.map(sprite => {sprite.update()});
 
+			//update map sprite
 			map.update();
 
 			//collision detection bullet and enemy
