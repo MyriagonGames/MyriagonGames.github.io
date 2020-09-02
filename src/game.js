@@ -128,7 +128,7 @@ load(
 					y: player.y,
 					dx: 5 * player.x_dir,
 					dy: 5 * player.y_dir, 
-					ttl: 30, // live only 30 frames (i.e. 1 second at 30fps)
+					ttl: 20, // live only 20 frames (i.e. 1 second at 20fps)
 					radius: 2, // bullets are small
 					width: 2,
 					height: 2
@@ -214,22 +214,8 @@ load(
 				}
 			});
 			
-			//bullet update and wrap around map
-			bullets.map(sprite => {
-				sprite.update();
-				if (sprite.x < -sprite.radius) {
-					sprite.x = canvas.width + sprite.radius; // sprite is beyond the left edge
-				}
-				else if (sprite.x > canvas.width + sprite.radius) {
-					sprite.x = 0 - sprite.radius; // sprite is beyond the right edge
-				}
-				if (sprite.y < -sprite.radius) {
-					sprite.y = canvas.height + sprite.radius; // sprite is beyond the top edge
-				}
-				else if (sprite.y > canvas.height + sprite.radius) {
-					sprite.y = -sprite.radius; // sprite is beyond the bottom edge
-				}
-			});
+			//bullet update
+			bullets.map(sprite => {sprite.update()});
 
 			map.update();
 
