@@ -14,7 +14,8 @@ on('assetLoaded', (asset, url) => {
 
 load(
   'assets/imgs/enemy.png',
-  'assets/imgs/map1.png',
+  'assets/imgs/map2.png',
+  'assets/imgs/map3.png',
   'assets/imgs/player_walk.png'
 ).then(function(assets) {
   // all assets have loaded
@@ -22,7 +23,8 @@ load(
 	let map = Sprite({
 		x: 0,
 		y: 0,
-		image: imageAssets['assets/imgs/map1']
+		map: 2,
+		image: imageAssets['assets/imgs/map2']
 	});
 
 	//player animations
@@ -63,19 +65,19 @@ load(
 	//enemy array
 	let enemies = [
 		Sprite({
-			x: 100,
-			y: 100,
+			x: 10,
+			y: 16*5+8,
 			anchor: {x: 0.5, y: 0.5},
-			dx: 1.5,
+			dx: 0.5,
 			dy: 0,
 			image: imageAssets['assets/imgs/enemy']
 		}),
 		Sprite({
-			x: 100,
-			y: 200,
+			x: 16*5+8,
+			y: 10,
 			anchor: {x: 0.5, y: 0.5},
-			dx: 1.6,
-			dy: 0,
+			dx: 0,
+			dy: 0.6,
 			image: imageAssets['assets/imgs/enemy']
 		})
 	];
@@ -148,14 +150,39 @@ load(
 			}
 			
 			//end of game, win conditions, currently get to an exit/entrance
-			if ((player.y >= canvas.height-player.height/2 && player.x > 128 && player.x < 192)
-				|| (player.y <= player.height/2 && player.x > 128 && player.x < 192)
-				|| (player.x >= canvas.width-player.width/2 && player.y > 128 && player.y < 192)
-				|| (player.x <= player.width/2 && player.y > 128 && player.y < 192)
-				) {
-				loop.stop();
-				alert('You Won!');
-				window.location = '';
+
+			door_x_s = canvas.width/2-16;
+			door_x_e = canvas.width/2+16;
+			door_y_s = canvas.height/2-16;
+			door_y_e = canvas.height/2+16;
+
+			if ((player.y >= canvas.height-player.height/2 && player.x > door_x_s && player.x < door_x_e)
+					|| (player.y <= player.height/2 && player.x > door_x_s && player.x < door_x_e)
+					|| (player.x >= canvas.width-player.width/2 && player.y > door_y_s && player.y < door_y_e)
+					|| (player.x <= player.width/2 && player.y > door_y_s && player.y < door_y_e)) {
+				if( map.map == 2 ){
+					map.image = imageAssets['assets/imgs/map3'];
+					map.map = 3;
+				} else {
+					map.image = imageAssets['assets/imgs/map2'];
+					map.map = 2;
+				}
+				
+				if (player.x >= canvas.width-player.width/2){
+					player.x = player.width/2;
+				} else if (player.x <= player.width/2){
+					player.x = canvas.width-player.width/2;
+				}
+
+				if (player.y >= canvas.height-player.height/2){
+					player.y = player.height/2;
+				} else if (player.y <= player.height/2){
+					player.y = canvas.height-player.height/2;
+				}
+				
+				//loop.stop();
+				//alert('You Won!');
+				//window.location = '';
 			}
 			
 			player.update();
@@ -163,12 +190,19 @@ load(
 			
 			enemies.forEach(function(enemy){
 				//enemy movement
-				if (enemy.x >= canvas.width-enemy.height/2){
-					enemy.x = canvas.width-enemy.height/2;
+				if (enemy.x >= canvas.width-enemy.width/2){
+					enemy.x = canvas.width-enemy.width/2;
 					enemy.dx = -enemy.dx;
-				} else if (enemy.x < 20){
-					enemy.x = 20;
+				} else if (enemy.x <= enemy.width/2){
+					enemy.x = enemy.width/2;
 					enemy.dx = -enemy.dx;
+				}
+				if (enemy.y >= canvas.height-enemy.height/2){
+					enemy.y = canvas.height-enemy.height/2;
+					enemy.dy = -enemy.dy;
+				} else if (enemy.y <= enemy.height/2){
+					enemy.y = enemy.height/2;
+					enemy.dy = -enemy.dy;
 				}
 				enemy.update();
 				
