@@ -48,8 +48,8 @@ load(
 
 	//player sprite
 	let player = Sprite({
-		x: 50,
-		y: 50,
+		x: canvas.width/2,
+		y: canvas.height/2,
 		dt: 0, //track time that has passed
 		x_dir: 1, //for determining last faced direction, for bullet direction
 		y_dir: 0,
@@ -64,7 +64,7 @@ load(
 	let enemies = [
 		Sprite({
 			x: 100,
-			y: 220,
+			y: 100,
 			anchor: {x: 0.5, y: 0.5},
 			dx: 1.5,
 			dy: 0,
@@ -72,7 +72,7 @@ load(
 		}),
 		Sprite({
 			x: 100,
-			y: 165,
+			y: 200,
 			anchor: {x: 0.5, y: 0.5},
 			dx: 1.6,
 			dy: 0,
