@@ -18,16 +18,30 @@
     <title>Myriagon Games</title>
 
     <style>
-			body {
-				background: black;
-			}
-			canvas {
-				background: white;
-				width: 100%;
-				max-width: 320px;
-				margin: auto;
-				display: block;
-			}
+	body {
+		background: black;
+	}
+	canvas {
+		background: white;
+		width: 100%;
+		max-width: 320px;
+		margin: auto;
+		display: block;
+		transform-origin: top;
+		image-rendering: pixelated;
+	}
+	    
+	@media (max-height: 960px) and (max-width: 960px) {
+	  canvas {
+	    transform: scale(3);
+	  }
+	}
+	
+	@media (max-height: 640px) and (max-width: 640px) {
+	  canvas {
+	    transform: scale(2);
+	  }
+	}  
 	</style>
 </head>
 
