@@ -50,8 +50,8 @@ load(
 
 	//player sprite
 	let player = Sprite({
-		x: canvas.width/2,
-		y: canvas.height/2,
+		x: canvas.width/2 -8,
+		y: canvas.height/2 -8,
 		dt: 0, //track time that has passed
 		x_dir: 1, //for determining last faced direction, for bullet direction
 		y_dir: 0,
@@ -149,8 +149,7 @@ load(
 				player.y = player.height/2;
 			}
 			
-			//end of game, win conditions, currently get to an exit/entrance
-
+			//plauer map traversing, via exits/entrances
 			door_x_s = canvas.width/2-16;
 			door_x_e = canvas.width/2+16;
 			door_y_s = canvas.height/2-16;
@@ -185,6 +184,7 @@ load(
 				//window.location = '';
 			}
 			
+
 			player.update();
 			
 			
