@@ -147,8 +147,12 @@ load(
 				player.y = player.height/2;
 			}
 			
-			//end of game
-			if (player.y >= canvas.height-player.height/2){
+			//end of game, win conditions, currently get to an exit/entrance
+			if ((player.y >= canvas.height-player.height/2 && player.x > 128 && player.x < 192)
+				|| (player.y <= player.height/2 && player.x > 128 && player.x < 192)
+				|| (player.x >= canvas.width-player.width/2 && player.y > 128 && player.y < 192)
+				|| (player.x <= player.width/2 && player.y > 128 && player.y < 192)
+				) {
 				loop.stop();
 				alert('You Won!');
 				window.location = '';
