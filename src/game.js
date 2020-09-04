@@ -113,6 +113,7 @@ load(
 		animations: player_animation.animations
 	});
 
+
 	//empty bullets array (array is populated on key press)
 	let bullets = [];
 
@@ -135,11 +136,48 @@ load(
 			image: imageAssets['assets/imgs/enemy']
 		})
 	];
-	
 
 	let loop = GameLoop({
 		
 		update: function () {
+
+			function newMap(i,j,x,y) {
+				//check new map index exists
+				[i,j,eoMap] = getMapIndex(i,j);
+				
+				//return if no new map tile available
+				if (eoMap == true) {
+					return; 
+				};
+
+				//remove enemies next frame
+				for (let a = 0; a < enemies.length; a++) {
+					enemies[a].ttl = 0; 
+				};
+				enemies = [];
+				
+				//remove bullets next frame
+				for (let a = 0; a < bullets.length; a++) {
+					bullets[a].ttl = 0; 
+				};
+				bullets = [];
+				
+				//new map data
+				map.map_i = i; //new map row
+				map.map_j = j; //new map column
+				map.map_num = getMapImageNum(i,j); //new map image number
+				map.image = imageAssets[('assets/imgs/map' + map.map_num)]; //load relevant map tile image
+				
+				mapText.text = 'Map:' + map.map_i + ', ' + map.map_j + ' Size:' + map_size; //update map text
+
+				//place player in correct location
+				player.x = x; 
+				player.y = y; 
+
+				//TODO: populate map with enemies, items etc.
+
+				return;
+			};
 			
 			//user controls
 			if (keyPressed('up')){
@@ -204,57 +242,31 @@ load(
 			};
 			
 			//player map traversing, via exits/entrances
-			door_x_s = canvas.width/2-16;
-			door_x_e = canvas.width/2+16;
-			door_y_s = canvas.height/2-16;
-			door_y_e = canvas.height/2+16;
+			var door_x_s = canvas.width/2-16;
+			var door_x_e = canvas.width/2+16;
+			var door_y_s = canvas.height/2-16;
+			var door_y_e = canvas.height/2+16;
 			
 			if (player.y >= canvas.height-player.height/2 && player.x > door_x_s && player.x < door_x_e) { 
-				[map_i,map_j,eoMap] = getMapIndex(map.map_i+1,map.map_j); //go down a map
-				if (eoMap == false) {
-					map.map_i = map_i;
-					map.map_j = map_j;
-					map.map_num = getMapImageNum(map.map_i,map.map_j);
-					map.image = imageAssets[('assets/imgs/map' + map.map_num)]; //load relevant map tile
-					player.y = player.height/2; //place player in correct space
-				};
+				//down a map
+				newMap(map.map_i+1, map.map_j, player.x, player.height/2);
 
 			} else if (player.y <= player.height/2 && player.x > door_x_s && player.x < door_x_e) { 
-				[map_i,map_j,eoMap] = getMapIndex(map.map_i-1,map.map_j); //go up a map
-				if (eoMap == false) {
-					map.map_i = map_i;
-					map.map_j = map_j;
-					map.map_num = getMapImageNum(map.map_i,map.map_j);
-					map.image = imageAssets[('assets/imgs/map' + map.map_num)]; //load relevant map tile
-					player.y = canvas.height-player.height/2; //place player in correct space
-				};
+				//up a map
+				newMap(map.map_i-1, map.map_j, player.x, canvas.height-player.height/2);
 
 			} else if (player.x >= canvas.width-player.width/2 && player.y > door_y_s && player.y < door_y_e) { 
-				[map_i,map_j,eoMap] = getMapIndex(map.map_i,map.map_j+1); //go right a map
-				if (eoMap == false) {
-					map.map_i = map_i;
-					map.map_j = map_j;
-					map.map_num = getMapImageNum(map.map_i,map.map_j);
-					map.image = imageAssets[('assets/imgs/map' + map.map_num)]; //load relevant map tile
-					player.x = player.width/2; //place player in correct space
-				};
+				//right a map
+				newMap(map.map_i, map.map_j+1, player.width/2, player.y);
 
 			} else if (player.x <= player.width/2 && player.y > door_y_s && player.y < door_y_e) { 
-				[map_i,map_j,eoMap] = getMapIndex(map.map_i,map.map_j-1); //go left a map
-				if (eoMap == false) {
-					map.map_i = map_i;
-					map.map_j = map_j;
-					map.map_num = getMapImageNum(map.map_i,map.map_j);
-					map.image = imageAssets[('assets/imgs/map' + map.map_num)]; //load relevant map tile
-					player.x = player.x = canvas.width-player.width/2; //place player in correct space
-				};
+				//left a map
+				newMap(map.map_i, map.map_j-1, canvas.width-player.width/2, player.y);
+
 			};
 
 			//update player sprite
 			player.update();
-
-			//update Text
-			mapText.text = 'Map:' + map.map_i + ', ' + map.map_j + ' Size:' + map_size;
 			
 			//update enemy sprites
 			enemies.forEach(function(enemy){
@@ -286,9 +298,6 @@ load(
 			//update bullet sprites
 			bullets.map(sprite => {sprite.update()});
 
-			//update map sprite
-			map.update();
-
 			//collision detection bullet and enemy
 			for (let i = 0; i < enemies.length; i++) {
 				for (let j = 0; j < bullets.length; j++) {
@@ -304,6 +313,9 @@ load(
 			
 			enemies = enemies.filter(enemy => enemy.isAlive());	// filter out (remove) enemies
 			bullets = bullets.filter(sprite => sprite.isAlive());	// filter out (remove) bullets
+
+			//update map sprite
+			map.update();
 
 		}, //this update fn gets called multiple times per second
 		
