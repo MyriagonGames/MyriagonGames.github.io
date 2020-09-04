@@ -1,5 +1,5 @@
 //canvas variables
-let { init, on, load, imageAssets, Sprite, SpriteSheet, GameLoop, initKeys, keyPressed, collides } = kontra //initiate kontra library (micro game engine) object with desired functions
+let { init, on, load, imageAssets, Sprite, SpriteSheet, GameLoop, initKeys, keyPressed, collides, Text } = kontra //initiate kontra library (micro game engine) object with desired functions
 let { canvas } = init();
 
 // this function must be called first before keyboard functions will work
@@ -67,6 +67,18 @@ load(
 		map_j: map_start[1],
 		map_num: getMapImageNum(map_start[0],map_start[1]),
 		image: imageAssets[('assets/imgs/map' + getMapImageNum(map_start[0],map_start[1]))]
+	});
+
+	var map_size = [map_layout[0].length-1,map_layout.length-1];
+
+	let mapText = Text({
+	  text: ('Map:' + map_start.slice(0,2) + ' Size:' + map_size),
+	  font: '10px Arial',
+	  color: 'black',
+	  x: 2,
+	  y: 2,
+	  anchor: {x: 0, y: 0},
+	  textAlign: 'left'
 	});
 
 	//player animations
@@ -240,6 +252,9 @@ load(
 
 			//update player sprite
 			player.update();
+
+			//update Text
+			mapText.text = 'Map:' + map.map_i + ', ' + map.map_j + ' Size:' + map_size;
 			
 			//update enemy sprites
 			enemies.forEach(function(enemy){
@@ -294,6 +309,7 @@ load(
 		
 		render: function () {
 			map.render();
+			mapText.render();
 			player.render();
 			enemies.forEach(function(enemy){
 				enemy.render();
