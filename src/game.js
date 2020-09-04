@@ -1,11 +1,11 @@
-let { init, on, load, imageAssets, Sprite, SpriteSheet, GameLoop, initKeys, keyPressed, collides } = kontra //initiate kontra library (micro game engine) object with desired functions
+//canvas variables
+let { init, on, load, imageAssets, Sprite, SpriteSheet, GameLoop, initKeys, keyPressed, collides, Text } = kontra //initiate kontra library (micro game engine) object with desired functions
 let { canvas } = init();
-let sprites = [];
 
 // this function must be called first before keyboard functions will work
 initKeys();
 
-let numAssets = 4;
+let numAssets = 3;
 let assetsLoaded = 0;
 on('assetLoaded', (asset, url) => {
   assetsLoaded++;
@@ -15,11 +15,74 @@ on('assetLoaded', (asset, url) => {
 load(
   'assets/imgs/enemy.png',
   'assets/imgs/map1.png',
+  'assets/imgs/map2.png',
+  'assets/imgs/map3.png',
   'assets/imgs/player_walk.png'
 ).then(function(assets) {
   // all assets have loaded
 	
-	let player_walk = SpriteSheet({
+	let map_layout = [
+		[3,2,0],
+		[1,2,3],
+		[0,1,3]
+	]; //map layout must be a square array at the moment
+
+	function getMapImageNum(i,j) {
+		//TODO check map asset exists
+		return map_layout[i][j].toString();
+	};
+
+	function getMapIndex(i,j) {
+		//check there is a map tile in the indexed location
+		var eoMap = false;
+		if (i < 0) {
+			i = 0;
+			eoMap = true;
+		} else if (i >= map_layout.length){
+			i = map_layout.length-1;
+			eoMap = true;
+		};
+		if (j < 0) {
+			j = 0;
+			eoMap = true;
+		} else if (j >= map_layout[i].length){
+			j = map_layout[i].length-1;
+			eoMap = true;
+		};
+
+		// if tile is empty (no image, 0)
+		if (getMapImageNum(i,j) == 0) {
+			eoMap = true;
+		};
+
+		return [i,j,eoMap];
+	};
+
+	var map_start = getMapIndex(1,1); //starting map tile index
+
+	let map = Sprite({
+		x: 0,
+		y: 0,
+		map_i: map_start[0],
+		map_j: map_start[1],
+		map_num: getMapImageNum(map_start[0],map_start[1]),
+		image: imageAssets[('assets/imgs/map' + getMapImageNum(map_start[0],map_start[1]))]
+	});
+
+	var map_size = [map_layout[0].length-1,map_layout.length-1];
+
+	let mapText = Text({
+	  text: ('Map:' + map_start.slice(0,2) + ' Size:' + map_size),
+	  font: '10px Arial',
+	  color: 'black',
+	  x: 2,
+	  y: 2,
+	  anchor: {x: 0, y: 0},
+	  textAlign: 'left'
+	});
+
+	//player animations
+	let player_animation = SpriteSheet({
 		image: imageAssets['assets/imgs/player_walk'],
 		frameWidth: 16,
 		frameHeight: 16,
@@ -37,47 +100,84 @@ load(
 				frameRate: 30
 			}
 		}
-	}); //player walk animation
+	}); 
 
+	//player sprite
 	let player = Sprite({
-		x: 50,
-		y: 50,
+		x: canvas.width/2 -8,
+		y: canvas.height/2 -8,
 		dt: 0, //track time that has passed
-		x_dir: 1, //for determining last faced direction
+		x_dir: 1, //for determining last faced direction, for bullet direction
 		y_dir: 0,
 		anchor: {x: 0.5, y: 0.5},
-		animations: player_walk.animations
-	}); //sprites are the shapes we will use in our game
+		animations: player_animation.animations
+	});
 
 
+	//empty bullets array (array is populated on key press)
+	let bullets = [];
+
+	//enemy array
 	let enemies = [
 		Sprite({
-			x: 100,
-			y: 220,
+			x: 10,
+			y: 16*5+8,
 			anchor: {x: 0.5, y: 0.5},
-			dx: 1.5,
+			dx: 0.5,
 			dy: 0,
 			image: imageAssets['assets/imgs/enemy']
 		}),
 		Sprite({
-			x: 100,
-			y: 165,
+			x: 16*5+8,
+			y: 10,
 			anchor: {x: 0.5, y: 0.5},
-			dx: 1.6,
-			dy: 0,
+			dx: 0,
+			dy: 0.6,
 			image: imageAssets['assets/imgs/enemy']
 		})
 	];
 
-	let map = Sprite({
-		x: 0,
-		y: 0,
-		image: imageAssets['assets/imgs/map1']
-	});
-
 	let loop = GameLoop({
 		
 		update: function () {
+
+			function newMap(i,j,x,y) {
+				//check new map index exists
+				[i,j,eoMap] = getMapIndex(i,j);
+				
+				//return if no new map tile available
+				if (eoMap == true) {
+					return; 
+				};
+
+				//remove enemies next frame
+				for (let a = 0; a < enemies.length; a++) {
+					enemies[a].ttl = 0; 
+				};
+				enemies = [];
+				
+				//remove bullets next frame
+				for (let a = 0; a < bullets.length; a++) {
+					bullets[a].ttl = 0; 
+				};
+				bullets = [];
+				
+				//new map data
+				map.map_i = i; //new map row
+				map.map_j = j; //new map column
+				map.map_num = getMapImageNum(i,j); //new map image number
+				map.image = imageAssets[('assets/imgs/map' + map.map_num)]; //load relevant map tile image
+				
+				mapText.text = 'Map:' + map.map_i + ', ' + map.map_j + ' Size:' + map_size; //update map text
+
+				//place player in correct location
+				player.x = x; 
+				player.y = y; 
+
+				//TODO: populate map with enemies, items etc.
+
+				return;
+			};
 			
 			//user controls
 			if (keyPressed('up')){
@@ -120,43 +220,70 @@ load(
 					y: player.y,
 					dx: 5 * player.x_dir,
 					dy: 5 * player.y_dir, 
-					ttl: 30, // live only 30 frames (i.e. 1 second at 30fps)
+					ttl: 20, // live only 20 frames (i.e. 1 second at 20fps)
 					radius: 2, // bullets are small
 					width: 2,
 					height: 2
 				});
-				sprites.push(bullet);
+				bullets.push(bullet);
 			}
 			
-			//map limits
+			//player map limits
 			if (player.x >= canvas.width-player.width/2){
 				player.x = canvas.width-player.width/2;
 			} else if (player.x <= player.width/2){
 				player.x = player.width/2;
-			}			
+			};			
 			
 			if (player.y >= canvas.height-player.height/2){
 				player.y = canvas.width-player.height/2;
 			} else if (player.y <= player.height/2){
 				player.y = player.height/2;
-			}
+			};
 			
-			//end of game
-			if (player.y >= canvas.height-player.height/2){
-				loop.stop();
-				alert('You Won!');
-				window.location = '';
-			}
+			//player map traversing, via exits/entrances
+			var door_x_s = canvas.width/2-16;
+			var door_x_e = canvas.width/2+16;
+			var door_y_s = canvas.height/2-16;
+			var door_y_e = canvas.height/2+16;
 			
+			if (player.y >= canvas.height-player.height/2 && player.x > door_x_s && player.x < door_x_e) { 
+				//down a map
+				newMap(map.map_i+1, map.map_j, player.x, player.height/2);
+
+			} else if (player.y <= player.height/2 && player.x > door_x_s && player.x < door_x_e) { 
+				//up a map
+				newMap(map.map_i-1, map.map_j, player.x, canvas.height-player.height/2);
+
+			} else if (player.x >= canvas.width-player.width/2 && player.y > door_y_s && player.y < door_y_e) { 
+				//right a map
+				newMap(map.map_i, map.map_j+1, player.width/2, player.y);
+
+			} else if (player.x <= player.width/2 && player.y > door_y_s && player.y < door_y_e) { 
+				//left a map
+				newMap(map.map_i, map.map_j-1, canvas.width-player.width/2, player.y);
+
+			};
+
+			//update player sprite
 			player.update();
 			
+			//update enemy sprites
 			enemies.forEach(function(enemy){
-				if (enemy.x >= canvas.width-enemy.height/2){
-					enemy.x = canvas.width-enemy.height/2;
+				//enemy movement
+				if (enemy.x >= canvas.width-enemy.width/2){
+					enemy.x = canvas.width-enemy.width/2;
 					enemy.dx = -enemy.dx;
-				} else if (enemy.x < 20){
-					enemy.x = 20;
+				} else if (enemy.x <= enemy.width/2){
+					enemy.x = enemy.width/2;
 					enemy.dx = -enemy.dx;
+				}
+				if (enemy.y >= canvas.height-enemy.height/2){
+					enemy.y = canvas.height-enemy.height/2;
+					enemy.dy = -enemy.dy;
+				} else if (enemy.y <= enemy.height/2){
+					enemy.y = enemy.height/2;
+					enemy.dy = -enemy.dy;
 				}
 				enemy.update();
 				
@@ -167,31 +294,15 @@ load(
 					window.location = '';
 				}
 			});
-			
-			//bullet update and wrap around map
-			sprites.map(sprite => {
-				sprite.update();
-				if (sprite.x < -sprite.radius) {
-					sprite.x = canvas.width + sprite.radius; // sprite is beyond the left edge
-				}
-				else if (sprite.x > canvas.width + sprite.radius) {
-					sprite.x = 0 - sprite.radius; // sprite is beyond the right edge
-				}
-				if (sprite.y < -sprite.radius) {
-					sprite.y = canvas.height + sprite.radius; // sprite is beyond the top edge
-				}
-				else if (sprite.y > canvas.height + sprite.radius) {
-					sprite.y = -sprite.radius; // sprite is beyond the bottom edge
-				}
-			});
 
-			map.update();
+			//update bullet sprites
+			bullets.map(sprite => {sprite.update()});
 
 			//collision detection bullet and enemy
 			for (let i = 0; i < enemies.length; i++) {
-				for (let j = 0; j < sprites.length; j++) {
+				for (let j = 0; j < bullets.length; j++) {
 					let enemy = enemies[i];
-					let sprite = sprites[j];
+					let sprite = bullets[j];
 					if (collides(enemy,sprite)) {
 						enemy.ttl = 0;
 						sprite.ttl = 0;
@@ -201,18 +312,22 @@ load(
 			};
 			
 			enemies = enemies.filter(enemy => enemy.isAlive());	// filter out (remove) enemies
-			sprites = sprites.filter(sprite => sprite.isAlive());	// filter out (remove) bullets
+			bullets = bullets.filter(sprite => sprite.isAlive());	// filter out (remove) bullets
+
+			//update map sprite
+			map.update();
 
 		}, //this update fn gets called multiple times per second
 		
 		render: function () {
 			map.render();
+			mapText.render();
 			player.render();
 			enemies.forEach(function(enemy){
 				enemy.render();
 			});
 
-			sprites.map(sprite => sprite.render()); //bullets etc.
+			bullets.map(sprite => sprite.render()); //bullets etc.
 
 		} //this render fn takes care of displaying things on the canvas
 		
