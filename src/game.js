@@ -22,9 +22,9 @@ load(
   // all assets have loaded
 	
 	let map_layout = [
-		[3,0,1],
+		[3,2,0],
 		[1,2,3],
-		[0,0,3]
+		[0,1,3]
 	]; //map layout must be a square array at the moment
 
 	function getMapImageNum(i,j) {
