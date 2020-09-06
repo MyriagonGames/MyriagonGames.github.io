@@ -2,8 +2,11 @@
 ## Game name: 404arena (working title)
 
 # Todo
-* Initial map graphics and setup
+* Procedural map generation
+* Better map population on game start
+* Proper player/environment/object physics and bounds
 * Item and inventory setup
+* Different enemy types
 * 8bit graphics and animations for player, items, enemies, interactables/environmental features
 
 # Game design ideas
