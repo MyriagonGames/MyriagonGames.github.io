@@ -13,14 +13,20 @@ on('assetLoaded', (asset, url) => {
 });
 
 load(
-  'assets/imgs/enemy.png',
+  'assets/imgs/enemy1.png',
   'assets/imgs/map1.png',
   'assets/imgs/map2.png',
   'assets/imgs/map3.png',
   'assets/imgs/player_walk.png'
 ).then(function(assets) {
-  // all assets have loaded
+	// all assets have loaded
 	
+	//high level variables
+	var difficulty = 3; //initial difficulty level
+	var difficulty_pool = difficulty; //a pool that determines how many and of what type of enemies can spawn in total throughout map tiles
+	var points = 0; //points player has collected from defeating enemies etc.
+	var max_enemies_per_tile = 3;
+
 	let map_layout = [
 		[3,2,0],
 		[1,2,3],
@@ -58,7 +64,8 @@ load(
 		return [i,j,eoMap];
 	};
 
-	var map_start = getMapIndex(1,1); //starting map tile index
+	//starting map tile index variable
+	var map_start = getMapIndex(1,1);
 
 	let map = Sprite({
 		x: 0,
@@ -72,13 +79,13 @@ load(
 	var map_size = [map_layout[0].length-1,map_layout.length-1];
 
 	let mapText = Text({
-	  text: ('Map:' + map_start.slice(0,2) + ' Size:' + map_size),
-	  font: '10px Arial',
-	  color: 'black',
-	  x: 2,
-	  y: 2,
-	  anchor: {x: 0, y: 0},
-	  textAlign: 'left'
+		text: 'Map:' + map.map_i + ', ' + map.map_j + ' Size:' + map_size + ' Points:' + points,
+		font: '10px Arial',
+		color: 'black',
+		x: 2,
+		y: 2,
+		anchor: {x: 0, y: 0},
+		textAlign: 'left'
 	});
 
 	//player animations
@@ -117,29 +124,43 @@ load(
 	//empty bullets array (array is populated on key press)
 	let bullets = [];
 
-	//enemy array
-	let enemies = [
-		Sprite({
-			x: 10,
-			y: 16*5+8,
-			anchor: {x: 0.5, y: 0.5},
-			dx: 0.5,
-			dy: 0,
-			image: imageAssets['assets/imgs/enemy']
-		}),
-		Sprite({
-			x: 16*5+8,
-			y: 10,
-			anchor: {x: 0.5, y: 0.5},
-			dx: 0,
-			dy: 0.6,
-			image: imageAssets['assets/imgs/enemy']
-		})
-	];
+	//enemy array (array is populated on new map)
+	let enemies = [];
 
 	let loop = GameLoop({
 		
 		update: function () {
+
+			function spawn_enemy(type){ //TODO different enemy types and difficulties
+				if (difficulty_pool < type) { //if not enough points left in pool then stop spawning enemy
+					return;
+				};
+
+				difficulty_pool = difficulty_pool - type; //remove points from pool
+
+				var enemy_x = 32 + Math.floor(Math.random()*96);
+				var enemy_y = 32 + Math.floor(Math.random()*96);
+				var enemy_dx = 1 - Math.round(Math.random()* 20)/10;
+				var enemy_dy = 1 - Math.round(Math.random()* 20)/10;
+
+				enemies.push(
+					Sprite({
+						x: enemy_x,
+						y: enemy_y,
+						anchor: {x: 0.5, y: 0.5},
+						dx: enemy_dx,
+						dy: enemy_dy,
+						image: imageAssets[('assets/imgs/enemy' + type)],
+						type: type //type 1 is worth 1 difficulty point etc. at the moment TODO
+					})
+				);
+
+				return;
+			};
+
+			function updateMapText(){
+				mapText.text = 'Map:' + map.map_i + ', ' + map.map_j + ' Size:' + map_size + ' Points:' + points; //update map text
+			};
 
 			function newMap(i,j,x,y) {
 				//check new map index exists
@@ -152,29 +173,41 @@ load(
 
 				//remove enemies next frame
 				for (let a = 0; a < enemies.length; a++) {
-					enemies[a].ttl = 0; 
+					enemies[a].ttl = 0;
+					difficulty_pool = difficulty_pool + enemies[a].type; //add points back to pool if not used
 				};
+				//enemies = enemies.filter(enemy => enemy.isAlive());	// filter out (remove) enemies
 				enemies = [];
 				
 				//remove bullets next frame
 				for (let a = 0; a < bullets.length; a++) {
 					bullets[a].ttl = 0; 
 				};
+				//bullets = bullets.filter(sprite => sprite.isAlive());	// filter out (remove) bullets
 				bullets = [];
-				
+
 				//new map data
 				map.map_i = i; //new map row
 				map.map_j = j; //new map column
 				map.map_num = getMapImageNum(i,j); //new map image number
 				map.image = imageAssets[('assets/imgs/map' + map.map_num)]; //load relevant map tile image
 				
-				mapText.text = 'Map:' + map.map_i + ', ' + map.map_j + ' Size:' + map_size; //update map text
+				updateMapText(); //update map text
 
 				//place player in correct location
 				player.x = x; 
 				player.y = y; 
 
-				//TODO: populate map with enemies, items etc.
+				//TODO: need a proper map structure with metadata for each map tile, created on start of game rather than each time player moves tile, for enemy and item placement etc.
+				//Populate Enemies
+				if (map_start[0] == getMapIndex(i,j)[0] && map_start[1] == getMapIndex(i,j)[1]) { 
+					//do nothing
+				} else {
+					//if not the starting map tile, place new enemy where player will not be (i.e. not next to exit/entrance)
+					for (let a = 0; a < Math.floor(Math.random()*(1+max_enemies_per_tile)); a++) { //equal chance of having any integer number of (or no) enemies
+						spawn_enemy(1);
+					};
+				}
 
 				return;
 			};
@@ -212,7 +245,7 @@ load(
 
 			//bullet firing from player, no more than once per 1/4 second
 			player.dt += 1/60;
-			if (keyPressed('space') && player.dt > 0.25) {
+			if (keyPressed('space') && player.dt > 0.5) {
 				player.dt = 0;
 				let bullet = Sprite({
 					color: 'white',
@@ -271,18 +304,18 @@ load(
 			//update enemy sprites
 			enemies.forEach(function(enemy){
 				//enemy movement
-				if (enemy.x >= canvas.width-enemy.width/2){
-					enemy.x = canvas.width-enemy.width/2;
+				if (enemy.x >= canvas.width-enemy.width/2-16){
+					enemy.x = canvas.width-enemy.width/2-16;
 					enemy.dx = -enemy.dx;
-				} else if (enemy.x <= enemy.width/2){
-					enemy.x = enemy.width/2;
+				} else if (enemy.x <= enemy.width/2 +16){
+					enemy.x = enemy.width/2 +16;
 					enemy.dx = -enemy.dx;
 				}
-				if (enemy.y >= canvas.height-enemy.height/2){
-					enemy.y = canvas.height-enemy.height/2;
+				if (enemy.y >= canvas.height-enemy.height/2-16){
+					enemy.y = canvas.height-enemy.height/2-16;
 					enemy.dy = -enemy.dy;
-				} else if (enemy.y <= enemy.height/2){
-					enemy.y = enemy.height/2;
+				} else if (enemy.y <= enemy.height/2+16){
+					enemy.y = enemy.height/2 +16;
 					enemy.dy = -enemy.dy;
 				}
 				enemy.update();
@@ -306,6 +339,8 @@ load(
 					if (collides(enemy,sprite)) {
 						enemy.ttl = 0;
 						sprite.ttl = 0;
+						points = points + enemy.type; //enemy is worth it's type in points
+						updateMapText();
 						break;
 					}
 				}
