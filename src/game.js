@@ -211,27 +211,26 @@ load(
 
 				return;
 			};
-			
+
+			function move(x, y) {
+				player.x += x;
+				player.y += y;
+				player.y_dir = Math.sign(y);
+				player.x_dir = Math.sign(x);
+			}
+
 			//user controls
 			if (keyPressed('up')){
-				player.y = player.y - 1;
-				player.y_dir = -1;
-				player.x_dir = 0;
+				move(0, -1);
 			}
 			if (keyPressed('down')){
-				player.y = player.y + 1;
-				player.y_dir = 1;
-				player.x_dir = 0;
+				move(0, 1);
 			}
 			if (keyPressed('left')){
-				player.x = player.x - 1;
-				player.x_dir = -1;
-				player.y_dir = 0;
+				move(-1, 0);
 			}
 			if (keyPressed('right')){
-				player.x = player.x + 1;
-				player.x_dir = 1;
-				player.y_dir = 0;
+				move(1, 0);
 			}
 
 			//player animations
@@ -358,10 +357,7 @@ load(
 			map.render();
 			mapText.render();
 			player.render();
-			enemies.forEach(function(enemy){
-				enemy.render();
-			});
-
+			enemies.map(enemy => enemy.render());
 			bullets.map(sprite => sprite.render()); //bullets etc.
 
 		} //this render fn takes care of displaying things on the canvas
