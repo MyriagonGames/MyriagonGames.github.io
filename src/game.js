@@ -176,15 +176,11 @@ load(
 					enemies[a].ttl = 0;
 					difficulty_pool = difficulty_pool + enemies[a].type; //add points back to pool if not used
 				};
-				//enemies = enemies.filter(enemy => enemy.isAlive());	// filter out (remove) enemies
-				enemies = [];
 				
 				//remove bullets next frame
 				for (let a = 0; a < bullets.length; a++) {
 					bullets[a].ttl = 0; 
 				};
-				//bullets = bullets.filter(sprite => sprite.isAlive());	// filter out (remove) bullets
-				bullets = [];
 
 				//new map data
 				map.map_i = i; //new map row
