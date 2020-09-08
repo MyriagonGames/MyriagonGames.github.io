@@ -22,64 +22,145 @@ load(
 	// all assets have loaded
 	
 	//high level variables
-	var difficulty = 3; //initial difficulty level
-	var difficulty_pool = difficulty; //a pool that determines how many and of what type of enemies can spawn in total throughout map tiles
+	var difficulty = 9; //initial difficulty level
+	var difficulty_pool = difficulty; //a pool that determines how many and of what type of enemies can spawn in total throughout rooms of the level
 	var points = 0; //points player has collected from defeating enemies etc.
-	var max_enemies_per_tile = 3;
-
-	let map_layout = [
+	var max_enemies_per_room = 3;
+	var max_items_per_room = 1;
+	var level_array = [
 		[3,2,0],
 		[1,2,3],
 		[0,1,3]
-	]; //map layout must be a square array at the moment
+	]; //level layout must be a square array of rooms at the moment, but can be empty with a 0
+	var room_start = [1,1]; //starting room of level index variable
+	var level_size = [level_array[0].length-1,level_array.length-1];
+	var level = JSON.parse(JSON.stringify(level_array)); //level variable to hold all meta data on rooms in level
 
-	function getMapImageNum(i,j) {
-		//TODO check map asset exists
-		return map_layout[i][j].toString();
+	function getRoomImageNum(i,j) {
+		//TODO check room asset exists
+		return level_array[i][j].toString();
 	};
 
-	function getMapIndex(i,j) {
-		//check there is a map tile in the indexed location
-		var eoMap = false;
+	function getLevelIndex(i,j) {
+		//check there is a room in the indexed level location
+		var end_of_level = false;
 		if (i < 0) {
 			i = 0;
-			eoMap = true;
-		} else if (i >= map_layout.length){
-			i = map_layout.length-1;
-			eoMap = true;
+			end_of_level = true;
+		} else if (i >= level_array.length){
+			i = level_array.length-1;
+			end_of_level = true;
 		};
 		if (j < 0) {
 			j = 0;
-			eoMap = true;
-		} else if (j >= map_layout[i].length){
-			j = map_layout[i].length-1;
-			eoMap = true;
+			end_of_level = true;
+		} else if (j >= level_array[i].length){
+			j = level_array[i].length-1;
+			end_of_level = true;
 		};
 
-		// if tile is empty (no image, 0)
-		if (getMapImageNum(i,j) == 0) {
-			eoMap = true;
+		// if room is empty (no image, 0)
+		if (getRoomImageNum(i,j) == 0) {
+			end_of_level = true;
 		};
 
-		return [i,j,eoMap];
+		return [i,j,end_of_level];
 	};
 
-	//starting map tile index variable
-	var map_start = getMapIndex(1,1);
+	var room_start = getLevelIndex(room_start[0],room_start[1]);
 
-	let map = Sprite({
+	function populateRoom(i,j){
+		var img_num = getRoomImageNum(i,j);
+		var enemies_per_room = Math.floor(Math.random()*(1+max_enemies_per_room)); //equal chance of having any integer number of (or no) enemies
+		var items_per_room =  Math.floor(Math.random()*(1+max_items_per_room));
+
+		var room = {
+			level_i: i,
+			level_j: j,
+			start: false, //is this the starting room of the level?
+			image_num: img_num,
+			is_empty: false, //is this room empty? i.e. do not populate
+			image_asset_name: ('assets/imgs/map' + img_num),
+			enemy_count: 0,
+			enemy_array: [],
+			item_count: 0,
+			item_array: []
+
+		};
+
+		// determine if starting room
+		if (room_start[0] == i && room_start[1] == j) { 
+			room.start = true;
+		}
+
+		//determine if empty room
+		if (room.image_num == 0) { 
+			room.is_empty = true;
+			room.enemy_count = 0;
+			room.item_count = 0;
+			return;
+		}
+		
+		//populate room with enemies
+		var e = 0;
+		while (e < enemies_per_room){ //while still space for enemies in this room
+			enemy_type = 1; //type used for naming and image asset, TODO when we have more than one enemy type add a semi random selector here to determine what enemy type to add
+			enemy_difficulty = 1; //points of difficulty, TODO possibly pull this from a master list of available enemies, with type and difficulty etc.
+			//TODO difficulty 1 is worth 1 point etc. at the moment, might want to change this
+			
+			if (difficulty_pool < enemy_difficulty) { break }; //if not enough points left in pool then stop spawning enemies
+			difficulty_pool = difficulty_pool - enemy_difficulty; //remove points from difficulty pool
+
+			room.enemy_array.push({
+				id: e,
+				status: 'alive',
+				type: enemy_type,
+				difficulty: enemy_difficulty,
+				image_asset_name: ('assets/imgs/enemy' + enemy_type) //sprite and location in room generated upon player entering room using this
+			})
+			
+			room.enemy_count += 1;
+			e += enemy_difficulty;
+		};
+
+		//TODO populate room with items
+		return room;
+	};
+
+	function populateLevel(){
+		//iterate through 2d level array and populate each room (could have fun and make the level nDimensional...)
+		for (let i = 0; i < level_array.length; i++) {
+			for (let j = 0; j < level_array[i].length; j++) {
+				level[i][j] = populateRoom(i,j);
+			}
+		}
+	};
+
+	let room_sprite = Sprite({
+		//initial room sprite
 		x: 0,
 		y: 0,
-		map_i: map_start[0],
-		map_j: map_start[1],
-		map_num: getMapImageNum(map_start[0],map_start[1]),
-		image: imageAssets[('assets/imgs/map' + getMapImageNum(map_start[0],map_start[1]))]
+		level_i: undefined,
+		level_j: undefined,
+		image_num: undefined,
+		image: undefined
 	});
 
-	var map_size = [map_layout[0].length-1,map_layout.length-1];
+	function updateRoomSprite(i,j){
+		//update room sprite with level coordinate, image number and image
+		room = level[i][j];
+		room_sprite.level_i = room.level_i;
+		room_sprite.level_j = room.level_j;
+		room_sprite.image_num = room.image_num;
+		room_sprite.image = imageAssets[(room.image_asset_name)]; //load relevant level room image
+		return;
+	};
+	
+	populateLevel();
+	updateRoomSprite(room_start[0],room_start[1]); //starting room sprite
 
-	let mapText = Text({
-		text: 'Map:' + map.map_i + ', ' + map.map_j + ' Size:' + map_size + ' Points:' + points,
+	let inventory = Text({
+		text: 'Room:' + room_sprite.level_i + ', ' + room_sprite.level_j + ' Size:' + level_size + ' Points:' + points,
 		font: '10px Arial',
 		color: 'black',
 		x: 2,
@@ -120,92 +201,81 @@ load(
 		animations: player_animation.animations
 	});
 
-
-	//empty bullets array (array is populated on key press)
+	//empty bullet sprite array (array is populated on key press)
 	let bullets = [];
 
-	//enemy array (array is populated on new map)
+	//empty enemy sprite array (array is populated on new room)
 	let enemies = [];
 
 	let loop = GameLoop({
 		
 		update: function () {
 
-			function spawn_enemy(type){ //TODO different enemy types and difficulties
-				if (difficulty_pool < type) { //if not enough points left in pool then stop spawning enemy
-					return;
+			function spawn_enemy_sprite(enemy){ //TODO different enemy types and difficulties
+				if (enemy.status == 'dead'){
+					return;					
 				};
 
-				difficulty_pool = difficulty_pool - type; //remove points from pool
+				//TODO random enemy position and velocity currently, be good to have upper and lower limits for different enemy behaviour
+				var x = 32 + Math.floor(Math.random()*96);
+				var y = 32 + Math.floor(Math.random()*96);
+				var dx = 1 - Math.round(Math.random()* 20)/10;
+				var dy = 1 - Math.round(Math.random()* 20)/10;
 
-				var enemy_x = 32 + Math.floor(Math.random()*96);
-				var enemy_y = 32 + Math.floor(Math.random()*96);
-				var enemy_dx = 1 - Math.round(Math.random()* 20)/10;
-				var enemy_dy = 1 - Math.round(Math.random()* 20)/10;
-
+				//add enemy sprite
 				enemies.push(
 					Sprite({
-						x: enemy_x,
-						y: enemy_y,
+						id: enemy.id, //enemy id in this room
+						x: x,
+						y: y,
 						anchor: {x: 0.5, y: 0.5},
-						dx: enemy_dx,
-						dy: enemy_dy,
-						image: imageAssets[('assets/imgs/enemy' + type)],
-						type: type //type 1 is worth 1 difficulty point etc. at the moment TODO
+						dx: dx,
+						dy: dy,
+						image: imageAssets[(enemy.image_asset_name)]
 					})
 				);
 
 				return;
 			};
 
-			function updateMapText(){
-				mapText.text = 'Map:' + map.map_i + ', ' + map.map_j + ' Size:' + map_size + ' Points:' + points; //update map text
+			function updateInventory(){
+				inventory.text = 'Room:' + room_sprite.level_i + ', ' + room_sprite.level_j + ' Size:' + level_size + ' Points:' + points; //update inventory text
 			};
 
-			function newMap(i,j,x,y) {
-				//check new map index exists
-				[i,j,eoMap] = getMapIndex(i,j);
+			function newMapRoom(i,j,x,y) {
+				//check new level index exists
+				[i,j,end_of_level] = getLevelIndex(i,j);
 				
-				//return if no new map tile available
-				if (eoMap == true) {
+				//return if no new room available
+				if (end_of_level == true) {
 					return; 
 				};
 
 				//remove enemies next frame
 				for (let a = 0; a < enemies.length; a++) {
 					enemies[a].ttl = 0;
-					difficulty_pool = difficulty_pool + enemies[a].type; //add points back to pool if not used
 				};
-				//enemies = enemies.filter(enemy => enemy.isAlive());	// filter out (remove) enemies
-				enemies = [];
 				
 				//remove bullets next frame
 				for (let a = 0; a < bullets.length; a++) {
 					bullets[a].ttl = 0; 
 				};
-				//bullets = bullets.filter(sprite => sprite.isAlive());	// filter out (remove) bullets
-				bullets = [];
-
-				//new map data
-				map.map_i = i; //new map row
-				map.map_j = j; //new map column
-				map.map_num = getMapImageNum(i,j); //new map image number
-				map.image = imageAssets[('assets/imgs/map' + map.map_num)]; //load relevant map tile image
 				
-				updateMapText(); //update map text
+				room = level[i][j];
+				updateRoomSprite(i,j); //update room sprite image
+				updateInventory(); //update inventory text
 
-				//place player in correct location
+				//place player in correct location in room
 				player.x = x; 
 				player.y = y; 
 
-				//TODO: need a proper map structure with metadata for each map tile, created on start of game rather than each time player moves tile, for enemy and item placement etc.
-				//Populate Enemies
-				if (map_start[0] == getMapIndex(i,j)[0] && map_start[1] == getMapIndex(i,j)[1]) { 
+				//populate enemy sprites
+				if (room.start) { 
 					//do nothing
 				} else {
-					//if not the starting map tile, place new enemy where player will not be (i.e. not next to exit/entrance)
-					for (let a = 0; a < Math.floor(Math.random()*(1+max_enemies_per_tile)); a++) { //equal chance of having any integer number of (or no) enemies
-						spawn_enemy(1);
+					//if not the starting room of the level, place new enemy where player will not be (i.e. not next to exit/entrance)
+					for (let a = 0; a < room.enemy_count; a++) { 
+						spawn_enemy_sprite(room.enemy_array[a]); //pass specific enemy object variable for this room to fn
 					};
 				}
 
@@ -260,7 +330,7 @@ load(
 				bullets.push(bullet);
 			}
 			
-			//player map limits
+			//player room limits
 			if (player.x >= canvas.width-player.width/2){
 				player.x = canvas.width-player.width/2;
 			} else if (player.x <= player.width/2){
@@ -273,27 +343,27 @@ load(
 				player.y = player.height/2;
 			};
 			
-			//player map traversing, via exits/entrances
+			//player level traversing, via room exits/entrances
 			var door_x_s = canvas.width/2-16;
 			var door_x_e = canvas.width/2+16;
 			var door_y_s = canvas.height/2-16;
 			var door_y_e = canvas.height/2+16;
 			
 			if (player.y >= canvas.height-player.height/2 && player.x > door_x_s && player.x < door_x_e) { 
-				//down a map
-				newMap(map.map_i+1, map.map_j, player.x, player.height/2);
+				//down a room
+				newMapRoom(room_sprite.level_i+1, room_sprite.level_j, player.x, player.height/2);
 
 			} else if (player.y <= player.height/2 && player.x > door_x_s && player.x < door_x_e) { 
-				//up a map
-				newMap(map.map_i-1, map.map_j, player.x, canvas.height-player.height/2);
+				//up a room
+				newMapRoom(room_sprite.level_i-1, room_sprite.level_j, player.x, canvas.height-player.height/2);
 
 			} else if (player.x >= canvas.width-player.width/2 && player.y > door_y_s && player.y < door_y_e) { 
-				//right a map
-				newMap(map.map_i, map.map_j+1, player.width/2, player.y);
+				//right a room
+				newMapRoom(room_sprite.level_i, room_sprite.level_j+1, player.width/2, player.y);
 
 			} else if (player.x <= player.width/2 && player.y > door_y_s && player.y < door_y_e) { 
-				//left a map
-				newMap(map.map_i, map.map_j-1, canvas.width-player.width/2, player.y);
+				//left a room
+				newMapRoom(room_sprite.level_i, room_sprite.level_j-1, canvas.width-player.width/2, player.y);
 
 			};
 
@@ -301,26 +371,26 @@ load(
 			player.update();
 			
 			//update enemy sprites
-			enemies.forEach(function(enemy){
+			enemies.forEach(function(enemy_sprite){
 				//enemy movement
-				if (enemy.x >= canvas.width-enemy.width/2-16){
-					enemy.x = canvas.width-enemy.width/2-16;
-					enemy.dx = -enemy.dx;
-				} else if (enemy.x <= enemy.width/2 +16){
-					enemy.x = enemy.width/2 +16;
-					enemy.dx = -enemy.dx;
+				if (enemy_sprite.x >= canvas.width - enemy_sprite.width /2 - 16){
+					enemy_sprite.x = canvas.width - enemy_sprite.width /2 - 16;
+					enemy_sprite.dx = -enemy_sprite.dx;
+				} else if (enemy_sprite.x <= enemy_sprite.width /2 + 16){
+					enemy_sprite.x = enemy_sprite.width /2 + 16;
+					enemy_sprite.dx = -enemy_sprite.dx;
 				}
-				if (enemy.y >= canvas.height-enemy.height/2-16){
-					enemy.y = canvas.height-enemy.height/2-16;
-					enemy.dy = -enemy.dy;
-				} else if (enemy.y <= enemy.height/2+16){
-					enemy.y = enemy.height/2 +16;
-					enemy.dy = -enemy.dy;
+				if (enemy_sprite.y >= canvas.height - enemy_sprite.height/2 - 16){
+					enemy_sprite.y = canvas.height - enemy_sprite.height/2 - 16;
+					enemy_sprite.dy = -enemy_sprite.dy;
+				} else if (enemy_sprite.y <= enemy_sprite.height /2 + 16){
+					enemy_sprite.y = enemy_sprite.height /2 + 16;
+					enemy_sprite.dy = -enemy_sprite.dy;
 				}
-				enemy.update();
+				enemy_sprite.update();
 				
-				//check for enemy player collision
-				if(collides(enemy,player)){
+				//check for enemy_sprite player collision
+				if(collides(enemy_sprite,player)){
 					loop.stop();
 					alert('GAME OVER!');
 					window.location = '';
@@ -330,34 +400,36 @@ load(
 			//update bullet sprites
 			bullets.map(sprite => {sprite.update()});
 
-			//collision detection bullet and enemy
+			//collision detection bullet and enemy_sprite
 			for (let i = 0; i < enemies.length; i++) {
 				for (let j = 0; j < bullets.length; j++) {
-					let enemy = enemies[i];
-					let sprite = bullets[j];
-					if (collides(enemy,sprite)) {
-						enemy.ttl = 0;
-						sprite.ttl = 0;
-						points = points + enemy.type; //enemy is worth it's type in points
-						updateMapText();
+					let enemy_sprite = enemies[i];
+					let bullet = bullets[j];
+					if (collides(enemy_sprite,bullet)) {
+						//TODO handle enemy_sprite removal so they don't respawn when reentering a room
+						room.enemy_array[enemy_sprite.id].status = 'dead';
+						points = points + room.enemy_array[enemy_sprite.id].difficulty; //enemy is worth it's difficulty in points
+						enemy_sprite.ttl = 0;
+						bullet.ttl = 0;
+						updateInventory();
 						break;
 					}
 				}
 			};
 			
-			enemies = enemies.filter(enemy => enemy.isAlive());	// filter out (remove) enemies
+			enemies = enemies.filter(enemy_sprite => enemy_sprite.isAlive());	// filter out (remove) enemies
 			bullets = bullets.filter(sprite => sprite.isAlive());	// filter out (remove) bullets
 
-			//update map sprite
-			map.update();
+			//update room sprite
+			room_sprite.update();
 
 		}, //this update fn gets called multiple times per second
 		
 		render: function () {
-			map.render();
-			mapText.render();
+			room_sprite.render();
+			inventory.render();
 			player.render();
-			enemies.map(enemy => enemy.render());
+			enemies.map(enemy_sprite => enemy_sprite.render());
 			bullets.map(sprite => sprite.render()); //bullets etc.
 
 		} //this render fn takes care of displaying things on the canvas
