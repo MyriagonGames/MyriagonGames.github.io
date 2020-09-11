@@ -17,7 +17,9 @@ load(
   'assets/imgs/map1.png',
   'assets/imgs/map2.png',
   'assets/imgs/map3.png',
-  'assets/imgs/player_walk.png'
+  'assets/imgs/player_walk.png',
+  'assets/imgs/item1.png',
+
 ).then(function(assets) {
 	// all assets have loaded
 	
@@ -107,23 +109,47 @@ load(
 			enemy_type = 1; //type used for naming and image asset, TODO when we have more than one enemy type add a semi random selector here to determine what enemy type to add
 			enemy_difficulty = 1; //points of difficulty, TODO possibly pull this from a master list of available enemies, with type and difficulty etc.
 			//TODO difficulty 1 is worth 1 point etc. at the moment, might want to change this
+			enemy_name = 'zombie';
 			
 			if (difficulty_pool < enemy_difficulty) { break }; //if not enough points left in pool then stop spawning enemies
 			difficulty_pool = difficulty_pool - enemy_difficulty; //remove points from difficulty pool
 
 			room.enemy_array.push({
 				id: e,
+				name: enemy_name,
 				status: 'alive',
 				type: enemy_type,
 				difficulty: enemy_difficulty,
 				image_asset_name: ('assets/imgs/enemy' + enemy_type) //sprite and location in room generated upon player entering room using this
-			})
+			});
 			
 			room.enemy_count += 1;
 			e += enemy_difficulty;
 		};
 
-		//TODO populate room with items
+		//populate room with items
+		var f = 0;
+		while (f < items_per_room){ //while still space for items in this room
+			item_type = 1; //type used for naming and image asset, TODO when we have more than one enemy type add a semi random selector here to determine what enemy type to add
+			item_rarity = 1; //points of rarity, TODO possibly pull this from a master list of available items, with type and rarity etc.
+			item_name = 'byte';
+			item_text = 'fire rate up'; //text to display upon item pickup
+			//TODO consider level pool for total number of items allowed to spawn like there is for enemies? Associate with difficulty?
+
+			room.item_array.push({
+				id: f,
+				name: item_name,
+				status: 'dropped',
+				text: item_text,
+				type: item_type,
+				rarity: item_rarity,
+				image_asset_name: ('assets/imgs/item' + item_type) //sprite and location in room generated upon player entering room using this
+			});
+			
+			room.item_count += 1;
+			f += item_rarity;
+		};
+
 		return room;
 	};
 
@@ -149,10 +175,11 @@ load(
 	function updateRoomSprite(i,j){
 		//update room sprite with level coordinate, image number and image
 		room = level[i][j];
-		room_sprite.level_i = room.level_i;
-		room_sprite.level_j = room.level_j;
-		room_sprite.image_num = room.image_num;
-		room_sprite.image = imageAssets[(room.image_asset_name)]; //load relevant level room image
+		rs = room_sprite;
+		rs.level_i = room.level_i;
+		rs.level_j = room.level_j;
+		rs.image_num = room.image_num;
+		rs.image = imageAssets[(room.image_asset_name)]; //load relevant level room image
 		return;
 	};
 	
@@ -166,6 +193,16 @@ load(
 		x: 2,
 		y: 2,
 		anchor: {x: 0, y: 0},
+		textAlign: 'left'
+	});
+
+	let item_spawn_text = Text({
+		text: '',
+		font: '7px Arial',
+		color: 'white',
+		x: 0,
+		y: 0,
+		anchor: {x: 0.5, y: 0.5},
 		textAlign: 'left'
 	});
 
@@ -198,7 +235,9 @@ load(
 		x_dir: 1, //for determining last faced direction, for bullet direction
 		y_dir: 0,
 		anchor: {x: 0.5, y: 0.5},
-		animations: player_animation.animations
+		animations: player_animation.animations,
+		speed: 1, //1 pixel per frame
+		firerate: 1 //once per second (assuming 30 fps)
 	});
 
 	//empty bullet sprite array (array is populated on key press)
@@ -206,6 +245,9 @@ load(
 
 	//empty enemy sprite array (array is populated on new room)
 	let enemies = [];
+
+	//empty item sprite array (array is populated on new room)
+	let items = [];
 
 	let loop = GameLoop({
 		
@@ -238,6 +280,29 @@ load(
 				return;
 			};
 
+			function spawn_item_sprite(item){ //TODO different item types and rarities
+				if (item.status != 'dropped'){
+					return;					
+				};
+
+				//TODO random item position currently, be good to have different item behaviour, and not place on empty spaces or walls etc.
+				var x = 32 + Math.floor(Math.random()*96);
+				var y = 32 + Math.floor(Math.random()*96);
+
+				//add item sprite
+				items.push(
+					Sprite({
+						id: item.id, //item id in this room
+						x: x,
+						y: y,
+						anchor: {x: 0.5, y: 0.5},
+						image: imageAssets[(item.image_asset_name)]
+					})
+				);
+
+				return;
+			};
+
 			function updateInventory(){
 				inventory.text = 'Room:' + room_sprite.level_i + ', ' + room_sprite.level_j + ' Size:' + level_size + ' Points:' + points; //update inventory text
 			};
@@ -255,6 +320,11 @@ load(
 				for (let a = 0; a < enemies.length; a++) {
 					enemies[a].ttl = 0;
 				};
+
+				//remove items next frame
+				for (let a = 0; a < items.length; a++) {
+					items[a].ttl = 0;
+				};
 				
 				//remove bullets next frame
 				for (let a = 0; a < bullets.length; a++) {
@@ -264,18 +334,23 @@ load(
 				room = level[i][j];
 				updateRoomSprite(i,j); //update room sprite image
 				updateInventory(); //update inventory text
+				item_spawn_text.text = ''; //update/remove item spawn text
 
 				//place player in correct location in room
 				player.x = x; 
 				player.y = y; 
 
-				//populate enemy sprites
+				//populate enemy and item sprites
 				if (room.start) { 
 					//do nothing
 				} else {
 					//if not the starting room of the level, place new enemy where player will not be (i.e. not next to exit/entrance)
 					for (let a = 0; a < room.enemy_count; a++) { 
 						spawn_enemy_sprite(room.enemy_array[a]); //pass specific enemy object variable for this room to fn
+					};
+
+					for (let a = 0; a < room.item_count; a++) { 
+						spawn_item_sprite(room.item_array[a]); //pass specific item object variable for this room to fn
 					};
 				}
 
@@ -291,16 +366,16 @@ load(
 
 			//user controls
 			if (keyPressed('up')){
-				move(0, -1);
+				move(0, -player.speed);
 			}
 			if (keyPressed('down')){
-				move(0, 1);
+				move(0, player.speed);
 			}
 			if (keyPressed('left')){
-				move(-1, 0);
+				move(-player.speed, 0);
 			}
 			if (keyPressed('right')){
-				move(1, 0);
+				move(player.speed, 0);
 			}
 
 			//player animations
@@ -313,8 +388,8 @@ load(
 			}
 
 			//bullet firing from player, no more than once per 1/4 second
-			player.dt += 1/60;
-			if (keyPressed('space') && player.dt > 0.5) {
+			player.dt += 1/30;
+			if (keyPressed('space') && player.dt > 1/player.firerate) {
 				player.dt = 0;
 				let bullet = Sprite({
 					color: 'white',
@@ -371,46 +446,75 @@ load(
 			player.update();
 			
 			//update enemy sprites
-			enemies.forEach(function(enemy_sprite){
+			enemies.forEach(function(es){
 				//enemy movement
-				if (enemy_sprite.x >= canvas.width - enemy_sprite.width /2 - 16){
-					enemy_sprite.x = canvas.width - enemy_sprite.width /2 - 16;
-					enemy_sprite.dx = -enemy_sprite.dx;
-				} else if (enemy_sprite.x <= enemy_sprite.width /2 + 16){
-					enemy_sprite.x = enemy_sprite.width /2 + 16;
-					enemy_sprite.dx = -enemy_sprite.dx;
+				if (es.x >= canvas.width - es.width /2 - 16){
+					es.x = canvas.width - es.width /2 - 16;
+					es.dx = -es.dx;
+				} else if (es.x <= es.width /2 + 16){
+					es.x = es.width /2 + 16;
+					es.dx = -es.dx;
 				}
-				if (enemy_sprite.y >= canvas.height - enemy_sprite.height/2 - 16){
-					enemy_sprite.y = canvas.height - enemy_sprite.height/2 - 16;
-					enemy_sprite.dy = -enemy_sprite.dy;
-				} else if (enemy_sprite.y <= enemy_sprite.height /2 + 16){
-					enemy_sprite.y = enemy_sprite.height /2 + 16;
-					enemy_sprite.dy = -enemy_sprite.dy;
+				if (es.y >= canvas.height - es.height/2 - 16){
+					es.y = canvas.height - es.height/2 - 16;
+					es.dy = -es.dy;
+				} else if (es.y <= es.height /2 + 16){
+					es.y = es.height /2 + 16;
+					es.dy = -es.dy;
 				}
-				enemy_sprite.update();
+				es.update();
 				
 				//check for enemy_sprite player collision
-				if(collides(enemy_sprite,player)){
+				if(collides(es,player)){
 					loop.stop();
 					alert('GAME OVER!');
 					window.location = '';
 				}
 			});
 
+			//update item sprites
+			items.forEach(function(i){
+				//check for item_sprite player collision
+				if(collides(i,player)){
+					//update item text
+					ist = item_spawn_text; //assignment for below
+					ist.text = room.item_array[i.id].text;
+					ist.x = i.x;
+					ist.y = i.y;
+					ist.update();
+					//TODO remove item text after ~1 second
+
+					//apply item effect
+					player.firerate += 1; //TODO per item effect
+
+					//remove item this frame
+					i.ttl = 0;
+					
+					//set variable to stop item respawning when re-entering a room
+					room.item_array[i.id].status = 'collected';
+				};
+				i.update();
+			});
+			
+				
 			//update bullet sprites
 			bullets.map(sprite => {sprite.update()});
 
-			//collision detection bullet and enemy_sprite
+			//collision detection bullet and enemy sprite
 			for (let i = 0; i < enemies.length; i++) {
 				for (let j = 0; j < bullets.length; j++) {
-					let enemy_sprite = enemies[i];
-					let bullet = bullets[j];
-					if (collides(enemy_sprite,bullet)) {
-						//TODO handle enemy_sprite removal so they don't respawn when reentering a room
-						room.enemy_array[enemy_sprite.id].status = 'dead';
-						points = points + room.enemy_array[enemy_sprite.id].difficulty; //enemy is worth it's difficulty in points
-						enemy_sprite.ttl = 0;
-						bullet.ttl = 0;
+					let es = enemies[i];
+					let b = bullets[j];
+					if (collides(es,b)) {
+						
+						//set variable to stop enemy respawning when re-entering a room
+						room.enemy_array[es.id].status = 'dead'; 
+						
+						//enemy is worth it's difficulty in points
+						points = points + room.enemy_array[es.id].difficulty; 
+
+						es.ttl = 0;
+						b.ttl = 0;
 						updateInventory();
 						break;
 					}
@@ -418,6 +522,7 @@ load(
 			};
 			
 			enemies = enemies.filter(enemy_sprite => enemy_sprite.isAlive());	// filter out (remove) enemies
+			items = items.filter(item_sprite => item_sprite.isAlive());	// filter out (remove) items
 			bullets = bullets.filter(sprite => sprite.isAlive());	// filter out (remove) bullets
 
 			//update room sprite
@@ -429,8 +534,10 @@ load(
 			room_sprite.render();
 			inventory.render();
 			player.render();
+			item_spawn_text.render();
 			enemies.map(enemy_sprite => enemy_sprite.render());
-			bullets.map(sprite => sprite.render()); //bullets etc.
+			items.map(item_sprite => item_sprite.render());
+			bullets.map(bullet_sprite => bullet_sprite.render());
 
 		} //this render fn takes care of displaying things on the canvas
 		
