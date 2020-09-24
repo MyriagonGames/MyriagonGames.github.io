@@ -51,7 +51,7 @@ function populateRoom(level_array,i,j,level_settings){
 	};
 
 	// determine if starting room
-	if (level_settings.room_start[0] == i && level_settings.room_start[1] == j) { 
+	if (level_settings.starting_room[0] == i && level_settings.starting_room[1] == j) { 
 		room.start = true;
 	}
 
@@ -113,11 +113,11 @@ function populateRoom(level_array,i,j,level_settings){
 	return room;
 };
 
-function populateLevel(level,level_array,level_settings){
+function populateLevel(level_array,level_settings){
 	//iterate through 2d level array and populate each room (could have fun and make the level nDimensional...)
 	for (let i = 0; i < level_array.length; i++) {
 		for (let j = 0; j < level_array[i].length; j++) {
-			level[i][j] = populateRoom(level_array,i,j,level_settings);
+			level_settings.rooms[i][j] = populateRoom(level_array,i,j,level_settings);
 		}
 	}
 };
